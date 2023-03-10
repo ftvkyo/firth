@@ -3,6 +3,14 @@ pub mod state;
 pub mod word;
 
 
+fn tokens_to_words<'a>(tokens: impl Iterator<Item = &'a str>, context: &context::Context) -> Vec<word::Word> {
+    tokens
+        .map(|token| word::Word::try_parse(token, context))
+        .map(Option::unwrap)
+        .collect()
+}
+
+
 fn main() {
     let mut context = context::Context::new();
 
@@ -17,34 +25,32 @@ fn main() {
             break;
         }
 
-        let is_definition = line.starts_with(":");
-        let line = line.strip_prefix(":").unwrap_or(line);
+        let mut tokens = line.split_whitespace().peekable();
+        let token1 = tokens.peek().unwrap();
 
-        let mut tokens = line.split_whitespace();
-        let mut definition_name = None;
+        // Process a definition
+        if *token1 == ":" {
+            tokens.next(); // Skip the colon
+            let name = tokens.next().unwrap();
+            let words = tokens_to_words(tokens, &context);
 
-        if is_definition {
-            definition_name = Some(tokens.next().unwrap());
-        }
-
-        let words = tokens
-            .map(|token| word::Word::try_parse(token, &context))
-            .map(Option::unwrap);
-
-        if let Some(name) = definition_name {
-            context.insert(name.to_string(), words.collect());
+            context.insert(name.to_string(), words);
             println!("Defined {}", name);
             continue;
-        }
+        } else {
+            // Otherwise it's an interactive line
 
-        let mut stack = state::Stack::new();
-        for word in words {
-            word.execute(&mut stack, &context);
-        }
+            let words = tokens_to_words(tokens, &context);
 
-        // If there's something left on the stack, print it
-        while let Some(data) = stack.pop() {
-            println!("{}", data.value());
+            let mut stack = state::Stack::new();
+            for word in words {
+                word.execute(&mut stack, &context);
+            }
+
+            // If there's something left on the stack, print it
+            while let Some(data) = stack.pop() {
+                println!("{}", data.value());
+            }
         }
     }
 }
