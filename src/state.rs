@@ -33,6 +33,10 @@ impl Stack {
         self.push(self.data.last().unwrap().clone());
     }
 
+    pub fn peek(&self) -> Option<&Data> {
+        self.data.last()
+    }
+
     pub fn op1(&mut self, f: impl FnOnce(Data) -> Data) {
         let a = self.pop().unwrap();
         self.push(f(a));
