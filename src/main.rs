@@ -1,5 +1,3 @@
-use std::io::BufRead;
-
 pub mod state;
 pub mod word;
 
@@ -23,18 +21,31 @@ impl Token {
 
 
 fn main() {
-    let mut stack = state::Stack::new();
+    loop {
+        let line = inquire::Text::new("=> ")
+            .prompt()
+            .unwrap();
 
-    let stdin = std::io::stdin();
-    for line in stdin.lock().lines() {
-        let line = line.unwrap();
-        let tokens = line.split_whitespace().map(Token::parse).map(Result::unwrap);
+        if line == "exit" {
+            break;
+        }
 
+        let tokens = line
+            .split_whitespace()
+            .map(Token::parse)
+            .map(Result::unwrap);
+
+        let mut stack = state::Stack::new();
         for token in tokens {
             match token {
                 Token::Word(word) => word.execute(&mut stack),
                 Token::Data(data) => stack.push(data),
             }
+        }
+
+        // If there's something left on the stack, print it
+        while let Some(data) = stack.pop() {
+            println!("{}", data.value());
         }
     }
 }

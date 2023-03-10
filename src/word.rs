@@ -3,8 +3,9 @@ use crate::state::{Data, Stack};
 
 const WORD_ADD: &str = "+";
 const WORD_SUB: &str = "-";
-const WORD_PRINT: &str = ".";
-const WORD_DEBUG_INDICATOR: &str = "#";
+const WORD_MUL: &str = "*";
+const WORD_DIV: &str = "/";
+const WORD_DUP: &str = "dup";
 
 
 pub struct Word {
@@ -16,19 +17,10 @@ impl Word {
         let kind: Box<dyn WordKind> = match input {
             WORD_ADD => Box::new(Add),
             WORD_SUB => Box::new(Sub),
-            WORD_PRINT => Box::new(Print),
-            x => {
-                if x.starts_with(WORD_DEBUG_INDICATOR) {
-                    let action = match &x[WORD_DEBUG_INDICATOR.len()..] {
-                        "print" => DebugAction::StackPrint,
-                        "clear" => DebugAction::StackClear,
-                        _ => return None,
-                    };
-                    Box::new(Debug { action })
-                } else {
-                    return None;
-                }
-            },
+            WORD_MUL => Box::new(Mul),
+            WORD_DIV => Box::new(Div),
+            WORD_DUP => Box::new(Dup),
+            _ => return None,
         };
         Some(Word { kind })
     }
@@ -68,39 +60,34 @@ impl WordKind for Sub {
 }
 
 
-pub struct Print;
+pub struct Mul;
 
-impl WordKind for Print {
+impl WordKind for Mul {
     fn execute(&self, stack: &mut Stack) {
         let a = stack.pop().unwrap();
-        println!("=> {}", a.value());
+        let b = stack.pop().unwrap();
+        stack.push(Data::new(a.value() * b.value()));
     }
 }
 
 
-enum DebugAction {
-    StackPrint,
-    StackClear,
-}
+pub struct Div;
 
-
-pub struct Debug {
-    action: DebugAction,
-}
-
-impl WordKind for Debug {
+impl WordKind for Div {
     fn execute(&self, stack: &mut Stack) {
-        match self.action {
-            DebugAction::StackPrint => {
-                print!("=> Stack: [");
-                for data in stack.get().iter() {
-                    print!("{}, ", data.value());
-                }
-                println!("]");
-            }
-            DebugAction::StackClear => {
-                stack.clear();
-            }
-        }
+        let a = stack.pop().unwrap();
+        let b = stack.pop().unwrap();
+        stack.push(Data::new(b.value() / a.value()));
+    }
+}
+
+
+pub struct Dup;
+
+impl WordKind for Dup {
+    fn execute(&self, stack: &mut Stack) {
+        let a = stack.pop().unwrap();
+        stack.push(a.clone());
+        stack.push(a);
     }
 }
