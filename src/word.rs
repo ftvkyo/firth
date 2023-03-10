@@ -1,6 +1,12 @@
 use crate::state::{Data, Stack};
 
 
+const WORD_ADD: &str = "+";
+const WORD_SUB: &str = "-";
+const WORD_PRINT: &str = ".";
+const WORD_DEBUG_INDICATOR: &str = "#";
+
+
 pub struct Word {
     kind: Box<dyn WordKind>,
 }
@@ -11,7 +17,18 @@ impl Word {
             WORD_ADD => Box::new(Add),
             WORD_SUB => Box::new(Sub),
             WORD_PRINT => Box::new(Print),
-            _ => return None,
+            x => {
+                if x.starts_with(WORD_DEBUG_INDICATOR) {
+                    let action = match &x[WORD_DEBUG_INDICATOR.len()..] {
+                        "print" => DebugAction::StackPrint,
+                        "clear" => DebugAction::StackClear,
+                        _ => return None,
+                    };
+                    Box::new(Debug { action })
+                } else {
+                    return None;
+                }
+            },
         };
         Some(Word { kind })
     }
@@ -23,23 +40,14 @@ impl Word {
 
 
 pub trait WordKind {
-    fn name(&self) -> &str;
     fn execute(&self, stack: &mut crate::state::Stack);
 }
 
-
-const WORD_ADD: &str = "+";
-const WORD_SUB: &str = "-";
-const WORD_PRINT: &str = ".";
 
 
 pub struct Add;
 
 impl WordKind for Add {
-    fn name(&self) -> &str {
-        WORD_ADD
-    }
-
     fn execute(&self, stack: &mut Stack) {
         let a = stack.pop().unwrap();
         let b = stack.pop().unwrap();
@@ -51,10 +59,6 @@ impl WordKind for Add {
 pub struct Sub;
 
 impl WordKind for Sub {
-    fn name(&self) -> &str {
-        WORD_SUB
-    }
-
     fn execute(&self, stack: &mut Stack) {
         let a = stack.pop().unwrap();
         let b = stack.pop().unwrap();
@@ -67,12 +71,36 @@ impl WordKind for Sub {
 pub struct Print;
 
 impl WordKind for Print {
-    fn name(&self) -> &str {
-        WORD_PRINT
-    }
-
     fn execute(&self, stack: &mut Stack) {
         let a = stack.pop().unwrap();
         println!("=> {}", a.value());
+    }
+}
+
+
+enum DebugAction {
+    StackPrint,
+    StackClear,
+}
+
+
+pub struct Debug {
+    action: DebugAction,
+}
+
+impl WordKind for Debug {
+    fn execute(&self, stack: &mut Stack) {
+        match self.action {
+            DebugAction::StackPrint => {
+                print!("=> Stack: [");
+                for data in stack.get().iter() {
+                    print!("{}, ", data.value());
+                }
+                println!("]");
+            }
+            DebugAction::StackClear => {
+                stack.clear();
+            }
+        }
     }
 }

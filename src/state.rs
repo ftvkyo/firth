@@ -31,4 +31,12 @@ impl Stack {
     pub fn pop(&mut self) -> Option<Data> {
         self.data.pop()
     }
+
+    pub fn clear(&mut self) {
+        self.data.clear();
+    }
+
+    pub fn get(&self) -> &Vec<Data> {
+        &self.data
+    }
 }
