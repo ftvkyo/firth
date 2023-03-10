@@ -8,127 +8,53 @@ const WORD_DIV: &str = "/";
 const WORD_DUP: &str = "dup";
 
 
-pub struct Word {
-    kind: Box<dyn WordKind>,
+pub enum Word {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Dup,
+    Ref { to: String },
+    Const { value: Data },
 }
+
 
 impl Word {
     pub fn try_parse(input: &str, context: &Context) -> Option<Word> {
-        let kind: Box<dyn WordKind> = match input {
-            WORD_ADD => Box::new(Add),
-            WORD_SUB => Box::new(Sub),
-            WORD_MUL => Box::new(Mul),
-            WORD_DIV => Box::new(Div),
-            WORD_DUP => Box::new(Dup),
+        match input {
+            WORD_ADD => Some(Self::Add),
+            WORD_SUB => Some(Self::Sub),
+            WORD_MUL => Some(Self::Mul),
+            WORD_DIV => Some(Self::Div),
+            WORD_DUP => Some(Self::Dup),
             _ => {
                 // Check if we have a compound word with this name
                 if let Some(_) = context.get(input) {
-                    Box::new(Ref {to: input.to_string()})
+                    Some(Self::Ref { to: input.to_string() })
                 } else {
                     // Otherwise, try to interpret it as a constant
-                    Box::new(Const::try_parse(input)?)
+                    Some(Self::Const{
+                        value: input.parse::<i32>().ok().map(|x| Data::new(x))?
+                    })
                 }
             },
-        };
-        Some(Word { kind })
+        }
     }
 
     pub fn execute(&self, stack: &mut Stack, context: &Context) {
-        self.kind.execute(stack, context);
-    }
-}
-
-
-pub trait WordKind {
-    fn execute(&self, stack: &mut Stack, context: &Context);
-}
-
-
-pub struct Add;
-
-impl WordKind for Add {
-    fn execute(&self, stack: &mut Stack, _context: &Context) {
-        let a = stack.pop().unwrap();
-        let b = stack.pop().unwrap();
-        stack.push(Data::new(a.value() + b.value()));
-    }
-}
-
-
-pub struct Sub;
-
-impl WordKind for Sub {
-    fn execute(&self, stack: &mut Stack, _context: &Context) {
-        let a = stack.pop().unwrap();
-        let b = stack.pop().unwrap();
-        // B - A because the stack is LIFO
-        stack.push(Data::new(b.value() - a.value()));
-    }
-}
-
-
-pub struct Mul;
-
-impl WordKind for Mul {
-    fn execute(&self, stack: &mut Stack, _context: &Context) {
-        let a = stack.pop().unwrap();
-        let b = stack.pop().unwrap();
-        stack.push(Data::new(a.value() * b.value()));
-    }
-}
-
-
-pub struct Div;
-
-impl WordKind for Div {
-    fn execute(&self, stack: &mut Stack, _context: &Context) {
-        let a = stack.pop().unwrap();
-        let b = stack.pop().unwrap();
-        stack.push(Data::new(b.value() / a.value()));
-    }
-}
-
-
-pub struct Dup;
-
-impl WordKind for Dup {
-    fn execute(&self, stack: &mut Stack, _context: &Context) {
-        let a = stack.pop().unwrap();
-        stack.push(a.clone());
-        stack.push(a);
-    }
-}
-
-
-pub struct Const {
-    value: Data,
-}
-
-impl Const {
-    pub fn try_parse(input: &str) -> Option<Const> {
-        let value = input.parse::<i32>().ok().map(|x| Data::new(x))?;
-        Some(Const {
-            value
-        })
-    }
-}
-
-impl WordKind for Const {
-    fn execute(&self, stack: &mut Stack, _context: &Context) {
-        stack.push(self.value.clone());
-    }
-}
-
-
-pub struct Ref {
-    to: String,
-}
-
-impl WordKind for Ref {
-    fn execute(&self, stack: &mut Stack, context: &Context) {
-        let sequence = context.get(&self.to).unwrap();
-        for word in sequence {
-            word.execute(stack, context);
+        match self {
+            Self::Add => stack.op2(|a, b| Data::new(b.value() + a.value())),
+            Self::Sub => stack.op2(|a, b| Data::new(b.value() - a.value())),
+            Self::Mul => stack.op2(|a, b| Data::new(b.value() * a.value())),
+            Self::Div => stack.op2(|a, b| Data::new(b.value() / a.value())),
+            Self::Dup => stack.dup(),
+            Self::Ref { to } => {
+                let words = context.get(to).unwrap();
+                for word in words {
+                    word.execute(stack, context);
+                }
+            },
+            Self::Const { value } => stack.push(value.clone()),
         }
     }
 }

@@ -7,12 +7,11 @@ fn main() {
     let mut context = context::Context::new();
 
     loop {
-        let line = inquire::Text::new("")
+        let input = inquire::Text::new("")
             .prompt()
             .unwrap();
 
-        // Remove whitespace from the start and end
-        let line = line.trim();
+        let line = input.trim();
 
         if line == "exit" {
             break;
