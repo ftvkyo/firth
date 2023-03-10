@@ -1,46 +1,46 @@
+pub mod context;
 pub mod state;
 pub mod word;
 
 
-pub enum Token {
-    Word(word::Word),
-    Data(state::Data),
-}
-
-impl Token {
-    pub fn parse(input: &str) -> Result<Token, ()> {
-        if let Some(word) = word::Word::try_parse(input) {
-            Ok(Token::Word(word))
-        } else if let Some(data) = state::Data::try_parse(input) {
-            Ok(Token::Data(data))
-        } else {
-            Err(())
-        }
-    }
-}
-
-
 fn main() {
+    let mut context = context::Context::new();
+
     loop {
-        let line = inquire::Text::new("=> ")
+        let line = inquire::Text::new("")
             .prompt()
             .unwrap();
+
+        // Remove whitespace from the start and end
+        let line = line.trim();
 
         if line == "exit" {
             break;
         }
 
-        let tokens = line
-            .split_whitespace()
-            .map(Token::parse)
-            .map(Result::unwrap);
+        let is_definition = line.starts_with(":");
+        let line = line.strip_prefix(":").unwrap_or(line);
+
+        let mut tokens = line.split_whitespace();
+        let mut definition_name = None;
+
+        if is_definition {
+            definition_name = Some(tokens.next().unwrap());
+        }
+
+        let words = tokens
+            .map(|token| word::Word::try_parse(token, &context))
+            .map(Option::unwrap);
+
+        if let Some(name) = definition_name {
+            context.insert(name.to_string(), words.collect());
+            println!("Defined {}", name);
+            continue;
+        }
 
         let mut stack = state::Stack::new();
-        for token in tokens {
-            match token {
-                Token::Word(word) => word.execute(&mut stack),
-                Token::Data(data) => stack.push(data),
-            }
+        for word in words {
+            word.execute(&mut stack, &context);
         }
 
         // If there's something left on the stack, print it

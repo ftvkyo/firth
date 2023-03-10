@@ -2,10 +2,6 @@
 pub struct Data(i32);
 
 impl Data {
-    pub fn try_parse(input: &str) -> Option<Data> {
-        input.parse::<i32>().ok().map(|x| Data(x))
-    }
-
     pub fn new(value: i32) -> Data {
         Data(value)
     }
