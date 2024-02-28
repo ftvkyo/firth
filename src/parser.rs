@@ -7,14 +7,7 @@ pub enum Word<'a> {
     Op(&'a str),
 }
 
-#[derive(PartialEq, Clone, Debug)]
-pub struct Expression<'a>(Vec<Word<'a>>);
-
-impl<'a> From<Vec<Word<'a>>> for Expression<'a> {
-    fn from(value: Vec<Word<'a>>) -> Self {
-        Self(value)
-    }
-}
+pub type Expression<'a> = Vec<Word<'a>>;
 
 mod parser {
     use super::*;
@@ -59,7 +52,7 @@ mod parser {
 
 pub fn parse_expression(input: &str) -> Result<Expression, ()> {
     all_consuming(parser::expression)(input)
-        .map(|(_, v)| v.into())
+        .map(|(_, v)| v)
         .map_err(|_| ())
 }
 
